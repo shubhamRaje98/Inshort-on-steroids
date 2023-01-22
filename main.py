@@ -20,10 +20,50 @@ from flask import Markup
 from gensim.summarization.summarizer import summarize
 import bs4
 import pickle
+from newspaper import Config
+#----
+from PIL import Image
+from bs4 import BeautifulSoup as soup
+from urllib.request import urlopen
+from newspaper import Article
+import io
+import nltk
 # import COVID19Py
 import emailsender as ty
 from covid import Covid
 
+#----------------------
+def fetch_news_search_topic(topic):
+    site = 'https://news.google.com/rss/search?q={}'.format(topic)
+    op = urlopen(site)  # Open that site
+    rd = op.read()  # read data from site
+    op.close()  # close the object
+    sp_page = soup(rd, 'xml')  # scrapping data from site
+    news_list = sp_page.find_all('item')  # finding news
+    return news_list
+
+
+def fetch_top_news():
+    site = 'https://news.google.com/news/rss'
+    op = urlopen(site)  # Open that site
+    rd = op.read()  # read data from site
+    op.close()  # close the object
+    sp_page = soup(rd, 'xml')  # scrapping data from site
+    news_list = sp_page.find_all('item')  # finding news
+    return news_list
+
+
+def fetch_category_news(topic):
+    site = 'https://news.google.com/news/rss/headlines/section/topic/{}'.format(topic)
+    op = urlopen(site)  # Open that site
+    rd = op.read()  # read data from site
+    op.close()  # close the object
+    sp_page = soup(rd, 'xml')  # scrapping data from site
+    news_list = sp_page.find_all('item')  # finding news
+    return news_list
+
+
+#----------------------
 
 latest_covid = {}
 covid = Covid(source="worldometers")
@@ -50,7 +90,14 @@ classifier = pickle.load(pickle_in)
 
 #Firebase Config
 firebaseConfig = {
-   "Firebase key here" : "here"
+   "apiKey": "AIzaSyDJFG8dMeK2oQEw29tCtgLT1TbBUEFc85U",
+  "authDomain": "newsin-1a9a9.firebaseapp.com",
+  "databaseURL":"",
+  "projectId": "newsin-1a9a9",
+  "storageBucket": "newsin-1a9a9.appspot.com",
+  "messagingSenderId": "1023350247427",
+  "appId": "1:1023350247427:web:c4618968072163a5377e36",
+  "measurementId": "G-1Z8269497F"
   };
 firebase = pyrebase.initialize_app(firebaseConfig)
 storage = firebase.storage()
@@ -64,16 +111,16 @@ app.secret_key = 'this is a very secure string'
 UPLOAD_FOLDER = 'static/uploads'
 ALLOWED_EXTENSIONS = set(['jpeg', 'jpg', 'png', 'gif'])
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-app.config.update(GEOIPIFY_API_KEY='#')
-newsapi = NewsApiClient(api_key="#")
+app.config.update(GEOIPIFY_API_KEY='at_R1W0Vf9WS1oPJoui0qZ8iffR5LR2M')
+newsapi = NewsApiClient(api_key="8787837ce8cd4844a818b009f46d4500")
 simple_geoip = SimpleGeoIP(app)
 translator = Translator()
 
 # Email config
 app.config['MAIL_SERVER']='smtp.stackmail.com'
 app.config['MAIL_PORT'] = 587
-app.config['MAIL_USERNAME'] = 'your_email'
-app.config['MAIL_PASSWORD'] = 'your_password'
+app.config['MAIL_USERNAME'] = 'shubhamshejaval@gmail.com'
+app.config['MAIL_PASSWORD'] = '9820632974isNotMyNumber'
 app.config['MAIL_USE_TLS'] = True
 app.config['MAIL_USE_SSL'] = False
 
@@ -83,7 +130,7 @@ try:
     database = mysql.connector.connect(
     host="localhost",
     user="root",
-    password="",
+    password="shubham",
     database="inshort_bharat"
     )
     print("Connection Success")
@@ -137,7 +184,40 @@ def index():
         headline += news['title'] + " "
     news_list = []
     query = 'SELECT id, title, content, published_date, image, category, slug FROM news ORDER BY published_date ASC LIMIT 10'
-    with database.cursor() as cursor:
+    
+    news_listt = fetch_top_news()
+    c = 0
+    for ele in news_listt:
+        news = {}
+        c = c+1
+        if(c>5):
+            break
+        news_data = Article(ele.link.text)
+        news_data.download()
+        news_data.parse()
+        news_data.nlp()
+        news['id'] = 1
+        news['title'] = news_data.title
+        news['content'] = news_data.summary
+        news['date'] = ele.pubDate.text
+        news['image'] = news_data.top_image
+        news['category'] = ""
+        news['src'] = ele.link.text
+        news_list.append(news)
+    
+    
+    return render_template("index.html",
+                            headlines=headline,
+                            location=location,
+                            weather_data=weather_data,
+                            day=datetime.datetime.today().strftime('%d'),month=datetime.datetime.today().strftime('%h'),
+                            newslist=news_list,
+                            categorylist=categories,
+                            covid = latest_covid)
+
+#date article reference : https://stackoverflow.com/questions/28189442/datetime-current-year-and-month-in-python
+'''
+   with database.cursor() as cursor:
         cursor.execute(query)
         db_data = cursor.fetchall()
         for row in db_data:
@@ -151,16 +231,8 @@ def index():
             news['category'] = row[5]
             news['slug'] = row[6]
             news_list.append(news)
-    return render_template("index.html",
-                            headlines=headline,
-                            location=location,
-                            weather_data=weather_data,
-                            day=datetime.datetime.today().strftime('%d'),month=datetime.datetime.today().strftime('%h'),
-                            newslist=news_list,
-                            categorylist=categories,
-                            covid = latest_covid)
-
-#date article reference : https://stackoverflow.com/questions/28189442/datetime-current-year-and-month-in-python
+ 
+'''
 ##==========
 ##* Change Language
 ##==========
@@ -235,11 +307,36 @@ def category_scrape(category_name):
     #TODO: RETURN CATEGORY
     category_namee = category_name
     news_list = []
+    config = Config()
+    config.request_timeout = 10
+    news_listt = fetch_news_search_topic(category_name)
+    c = 0
+    for ele in news_listt:
+        news = {}
+        c = c+1
+        if(c>6):
+            break
+        news_data = Article(ele.link.text, config=config)
+        news_data.download()
+        news_data.parse()
+        news_data.nlp()
+        news['id'] = 1
+        news['title'] = news_data.title
+        news['content'] = news_data.summary
+        news['date'] = ele.pubDate.text
+        news['image'] = news_data.top_image
+        news['category'] = ""
+        news['src'] = ele.link.text
+        news['author'] = news_data.authors
+        news_list.append(news)
+    return render_template("news/blog-grid.html", categories = news_list)
+
+'''
     query = """SELECT news.id, title, content, MONTHNAME(published_date), image, category, slug, users.name, count(comments.comment), DATE_FORMAT(published_date,"%D")
                FROM news             
                LEFT JOIN users ON news.published_by = users.id
                LEFT JOIN comments ON news.id = comments.post_id
-               WHERE category = %s """
+               WHERE category = %s GROUP BY news.id, title, content, MONTHNAME(published_date), image, category, slug, users.name, DATE_FORMAT(published_date,"%D")"""
     print(query)
     with database.cursor(buffered=True) as cursor:
         cursor.execute(query,(category_namee,))
@@ -259,19 +356,16 @@ def category_scrape(category_name):
             news['day'] = row[9]
 
             news_list.append(news)
-    return render_template("news/blog-grid.html", categories = news_list)
-        
+'''        
 
-
-##==========
+##=============
 ##* Web Stories
-##==========
+##=============
 @app.route('/web-stories')
 def webstories():
     stories = []
     i = 1
-    all_headlines = newsapi.get_top_headlines(category="general",
-    language='en',country="in")
+    all_headlines = newsapi.get_top_headlines(category="general", language='en',country="in")
     news_articles = all_headlines.get('articles')
     for news in news_articles:
         data = {}
@@ -283,9 +377,6 @@ def webstories():
         i += 1
     return render_template("news/stories.html",stories=stories)
 
-##?================================================
-##TODO: News Display Pages
-##? 
 
 ##==========
 ##TODO: news
@@ -295,21 +386,25 @@ def news():
     #TODO: LIST NEWS recent
     news_list = []
     query = 'SELECT id, title, content, published_date, published_by, category, slug FROM news ORDER BY published_date ASC LIMIT 50'
-    with database.cursor() as cursor:
-        cursor.execute(query)
-        db_data = cursor.fetchall()
-        for row in db_data:
-            news = {}
-            #print(row[1],row[2])
-            news['id'] = row[0]
-            news['title'] = row[1]
-            news['content'] = row[2]
-            news['date'] = row[3]
-            news['author'] = row[4]
-            news['category'] = row[5]
-            news['slug'] = row[6]
-            news_list.append(news)
-    print(news_list)
+    news_listt = fetch_top_news()
+    c = 0
+    for ele in news_listt:
+        news = {}
+        
+        news_data = Article(ele.link.text)
+        news_data.download()
+        news_data.parse()
+        news_data.nlp()
+        news['id'] = 1
+        news['title'] = news_data.title
+        news['content'] = news_data.summary
+        news['date'] = ele.pubDate.text
+        news['image'] = news_data.top_image
+        news['category'] = ""
+        news['src'] = ele.link.text
+        news['author'] = news_data.authors
+        news_list.append(news)
+
     return render_template("news/blog.html",news_list=news_list)
 
 ##==========
@@ -463,7 +558,7 @@ def register():
             "OTP" : OTP
         }
         session['user_info'] = user_info
-        msg = Message('Here is OTP to verify!', sender = 'sem6@neeldeshmukh.com',
+        msg = Message('Here is OTP to verify!', sender = 'sem8@shubhamshejaval.com',
                                 recipients = [email])
         msg.html = str(ty.giveHtml(str(OTP),name))
         mail.send(msg)           
@@ -749,7 +844,7 @@ def changepassword():
 #     return jsonify("/sw.js")
 @app.route('/sw.js', methods=['GET'])
 def sw():
-    return send_from_directory('/static/', filename="sw.js",mimetype="application/javascript")
+    return send_from_directory(directory='/static/', path="sw.js",mimetype="application/javascript")
 
 ##==========
 ##TODO: Basic Info
@@ -1334,7 +1429,7 @@ def sendBulkEmail():
                 print(row[0])
                 receivers.append(row[0])
     #send email from here
-    msg = Message('Hello', sender = 'sem6@neeldeshmukh.com', recipients = receivers)
+    msg = Message('Hello', sender = 'sem6@newsin.com', recipients = receivers)
     msg.body = "Hello Flask message sent from Flask-Mail"
     mail.send(msg)
 

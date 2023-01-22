@@ -21,7 +21,7 @@
       <article class="blog-grid" style="border: solid 0.2px #246df8">
         <div class="body">
           <span class="date">{{day}} <span>{{month}}</span> </span>
-          <h3>{{location["city"]}},{{location["country"]}}</h3>
+          <h3>Mumbai,India</h3>
           <p>
             Tempreature: {{weather_data["celcius"]}}&deg;
             &ensp;Humidity:{{weather_data["humidity"]}} &ensp;
@@ -100,7 +100,7 @@
             <a href="/at-rl/{{news['id']}}" class="button rl">Read later</a>
             
       
-            <button style="margin-top: 5px;" class="button"><a href="/dp/{{news['category']}}/{{news['slug']}}">Read More</a> </button>
+            <button style="margin-top: 5px;" class="button"><a href="{{  news['src'] }}">Read More</a> </button>
 
 
 
@@ -119,7 +119,7 @@
 <div class="container">
   <div class="row">
     <div class="col">
-      <h3> Deshmukh Media</h3>
+      <h3> NewsIn Media</h3>
       <amp-story-player style="width: 100%; height: 600px;">
         <a
           href="/web-stories">

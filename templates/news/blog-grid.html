@@ -18,11 +18,11 @@
                     <div class="body">
                       <span class="date">{{cat['day']}} <span>{{cat['month']}}</span></span>
                       
-                      <h3 style="padding-left: 5px;"><a href="/dp/{{cat['category']}}/{{cat['slug']}}">{{cat['title']}}</a></h3>
+                      <h3 style="padding-left: 5px;"><a href="{{cat['src']}}">{{cat['title']}}</a></h3>
                       <p>{{cat['content'] | safe | truncate(110)  }}</p>
                     </div>
                     <div class="info">
-                      <span class="author"><a href="#"><i data-feather="user"></i>{{cat['name']}}</a></span>
+                      <span class="author"><a href="#"><i data-feather="user"></i>{{cat['author']}}</a></span>
                       <span class="comments"><a href="#"><i data-feather="message-circle"></i>{{cat['commentcount']}}</a></span>
                     </div>
                   </article>
