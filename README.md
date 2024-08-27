@@ -1,4 +1,4 @@
-# Inshort Bharat - News Application
+# NewsIn - News Application
 
 ## Features of the system.
 # A) Authentication with OTP
